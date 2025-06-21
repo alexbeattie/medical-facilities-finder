@@ -23,7 +23,7 @@
           </div>
           <div>
             <h3 class="text-lg font-semibold text-gray-900">
-              {{ facility.name || facility.center_name || "Facility" }}
+              {{ getFacilityName(facility) }}
             </h3>
             <p class="text-sm text-gray-500">
               {{ getFacilityTypeLabel(facilityType) }}
@@ -268,8 +268,9 @@
             v-if="facility.latitude && facility.longitude"
             @click="getDirections"
             class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center space-x-2"
+            title="Get directions on the map (stays in app)"
           >
-            <span>🗺️</span>
+            <span>🧭</span>
             <span>Directions</span>
           </button>
 
@@ -321,9 +322,27 @@ export default {
       default: null,
     },
   },
-  emits: ["close", "contact-form"],
+  emits: ["close", "contact-form", "get-directions"],
   setup(props, { emit }) {
     const { calculateDistance } = useFacilities();
+
+    // Utility function to get facility name with fallbacks
+    // eslint-disable-next-line no-unused-vars
+    const getFacilityName = (facilityData) => {
+      if (!facilityData) return "Unknown Facility";
+
+      return (
+        facilityData.name ||
+        facilityData.regional_center || // For regional centers
+        facilityData.center_name ||
+        facilityData.facility_name ||
+        facilityData.organization_name ||
+        facilityData.provider_name ||
+        facilityData.title ||
+        facilityData.display_name ||
+        "Unknown Facility"
+      );
+    };
 
     // Computed
     const distance = computed(() => {
@@ -383,10 +402,19 @@ export default {
     };
 
     const getDirections = () => {
-      if (!props.facility.latitude || !props.facility.longitude) return;
+      if (!props.facility.latitude || !props.facility.longitude) {
+        alert("📍 Location data not available for directions");
+        return;
+      }
 
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${props.facility.latitude},${props.facility.longitude}`;
-      window.open(url, "_blank");
+      console.log(
+        "🧭 Requesting in-app directions to:",
+        getFacilityName(props.facility)
+      );
+
+      // Close this popup and trigger in-app directions
+      emit("get-directions", props.facility, props.facilityType);
+      emit("close"); // Close the popup after requesting directions
     };
 
     const callFacility = () => {
@@ -406,6 +434,7 @@ export default {
 
       // Methods
       closeModal,
+      getFacilityName,
       getFacilityTypeIcon,
       getFacilityTypeLabel,
       getFacilityTypeColor,

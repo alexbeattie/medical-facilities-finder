@@ -12,7 +12,7 @@
             {{ getFacilityIcon(facilityType) }}
           </span>
           <h4 class="text-base font-semibold text-gray-900 truncate">
-            {{ facility.name || facility.center_name || "Facility" }}
+            {{ getFacilityName(facility) }}
           </h4>
         </div>
 
@@ -165,6 +165,23 @@ export default {
   setup(props, { emit }) {
     const { calculateDistance } = useFacilities();
 
+    // Utility function to get facility name with fallbacks
+    const getFacilityName = (facilityData) => {
+      if (!facilityData) return "Unknown Facility";
+
+      return (
+        facilityData.name ||
+        facilityData.regional_center || // For regional centers
+        facilityData.center_name ||
+        facilityData.facility_name ||
+        facilityData.organization_name ||
+        facilityData.provider_name ||
+        facilityData.title ||
+        facilityData.display_name ||
+        "Unknown Facility"
+      );
+    };
+
     // Computed
     const distance = computed(() => {
       if (!props.userLocation || !props.facility) return null;
@@ -239,6 +256,7 @@ export default {
 
       // Methods
       selectFacility,
+      getFacilityName,
       getFacilityIcon,
       getBorderColor,
       getIconColor,

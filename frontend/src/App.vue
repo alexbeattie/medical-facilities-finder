@@ -85,8 +85,9 @@
           </div>
 
           <!-- Interactive Map -->
-          <FacilityMap
+          <FacilityMapbox
             v-if="searchResults"
+            ref="mapboxComponent"
             :facilities="searchResults"
             :user-location="userLocation"
             :loading="loading"
@@ -104,6 +105,10 @@
               Search for facilities to view them on the map with color-coded
               markers.
             </p>
+            <div class="text-sm text-gray-500">
+              <strong>Interactive Mapbox map</strong> with color-coded markers,
+              directions, and facility details.
+            </div>
           </div>
         </div>
       </div>
@@ -117,6 +122,7 @@
       :user-location="userLocation"
       @close="closeFacilityPopup"
       @contact-form="showContactForm"
+      @get-directions="onGetDirections"
     />
 
     <!-- Contact Form -->
@@ -160,7 +166,7 @@ import { ref, computed, onMounted } from "vue";
 import { useFacilities } from "@/composables/useFacilities";
 import LocationSearch from "@/components/LocationSearch.vue";
 import FacilityList from "@/components/FacilityList.vue";
-import FacilityMap from "@/components/FacilityMap.vue";
+import FacilityMapbox from "@/components/FacilityMapbox.vue";
 import FacilityPopup from "@/components/FacilityPopup.vue";
 import ContactForm from "@/components/ContactForm.vue";
 
@@ -169,7 +175,7 @@ export default {
   components: {
     LocationSearch,
     FacilityList,
-    FacilityMap,
+    FacilityMapbox,
     FacilityPopup,
     ContactForm,
   },
@@ -186,6 +192,7 @@ export default {
     const showContactFormModal = ref(false);
     const showToast = ref(false);
     const toastMessage = ref("");
+    const mapboxComponent = ref(null);
 
     // Computed
     const totalResults = computed(() => {
@@ -271,9 +278,27 @@ export default {
       }, 5000);
     };
 
+    const onGetDirections = (facility) => {
+      console.log("🗺️ App: Triggering in-app directions for:", facility);
+
+      // Use the mapbox component's getDirections method
+      if (mapboxComponent.value) {
+        mapboxComponent.value.getDirections(facility);
+        showToastMessage(
+          `🧭 Getting directions to ${
+            facility.name || facility.regional_center || "facility"
+          }`
+        );
+      } else {
+        console.error("Mapbox component not available");
+        showToastMessage("❌ Map not ready for directions");
+      }
+    };
+
     // Lifecycle
     onMounted(() => {
       console.log("ABA Facilities Finder App mounted");
+      console.log("Using Mapbox for interactive maps");
     });
 
     return {
@@ -290,6 +315,7 @@ export default {
       showContactFormModal,
       showToast,
       toastMessage,
+      mapboxComponent,
 
       // Computed
       totalResults,
@@ -303,6 +329,7 @@ export default {
       closeContactForm,
       onContactFormSubmitted,
       showToastMessage,
+      onGetDirections,
       clearError,
     };
   },

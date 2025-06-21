@@ -129,7 +129,7 @@ func (h *Handler) GetResourceCenters(c *gin.Context) {
 	radiusStr := c.Query("radius")
 
 	var centers []models.ResourceCenter
-	query := h.db.Model(&models.ResourceCenter{}).Preload("Diagnoses")
+	query := h.db.Model(&models.ResourceCenter{})
 
 	// Text search
 	if search != "" {
@@ -175,7 +175,7 @@ func (h *Handler) GetResourceCenter(c *gin.Context) {
 	log.Printf("[GET_RESOURCE_CENTER] Request for center ID: %s", centerID)
 
 	var center models.ResourceCenter
-	if err := h.db.Preload("Diagnoses").First(&center, "id = ?", centerID).Error; err != nil {
+	if err := h.db.First(&center, "id = ?", centerID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Resource center not found"})
 			return
@@ -196,9 +196,6 @@ func (h *Handler) GetResources(c *gin.Context) {
 
 	search := c.Query("search")
 	diagnosis := c.Query("diagnosis")
-	latStr := c.Query("lat")
-	lngStr := c.Query("lng")
-	radiusStr := c.Query("radius")
 
 	var resources []models.Resource
 	query := h.db.Model(&models.Resource{})
@@ -224,23 +221,7 @@ func (h *Handler) GetResources(c *gin.Context) {
 		return
 	}
 
-	// Filter by distance if location is provided
-	if latStr != "" && lngStr != "" && radiusStr != "" {
-		lat, latErr := strconv.ParseFloat(latStr, 64)
-		lng, lngErr := strconv.ParseFloat(lngStr, 64)
-		radius, radiusErr := strconv.ParseFloat(radiusStr, 64)
-
-		if latErr == nil && lngErr == nil && radiusErr == nil {
-			filteredResources := make([]models.Resource, 0)
-			for _, resource := range resources {
-				distance := calculateDistance(lat, lng, resource.Latitude, resource.Longitude)
-				if distance <= radius {
-					filteredResources = append(filteredResources, resource)
-				}
-			}
-			resources = filteredResources
-		}
-	}
+	// Note: Resources don't have location data, so distance filtering is not available
 
 	log.Printf("[GET_RESOURCES] Returning %d resources", len(resources))
 	c.JSON(http.StatusOK, resources)
@@ -310,8 +291,8 @@ func (h *Handler) GetRegionalCenters(c *gin.Context) {
 		if latErr == nil && lngErr == nil && radiusErr == nil {
 			filteredCenters := make([]models.RegionalCenter, 0)
 			for _, center := range centers {
-				if center.Latitude != nil && center.Longitude != nil {
-					distance := calculateDistance(lat, lng, *center.Latitude, *center.Longitude)
+				if center.Latitude != 0 && center.Longitude != 0 {
+					distance := calculateDistance(lat, lng, center.Latitude, center.Longitude)
 					if distance <= radius {
 						filteredCenters = append(filteredCenters, center)
 					}
@@ -443,7 +424,7 @@ func (h *Handler) SearchNearby(c *gin.Context) {
 		switch entityType {
 		case "resource_centers":
 			var centers []models.ResourceCenter
-			h.db.Model(&models.ResourceCenter{}).Preload("Diagnoses").Find(&centers)
+			h.db.Model(&models.ResourceCenter{}).Find(&centers)
 			nearby := make([]models.ResourceCenter, 0)
 			for _, center := range centers {
 				distance := calculateDistance(lat, lng, center.Latitude, center.Longitude)
@@ -458,8 +439,8 @@ func (h *Handler) SearchNearby(c *gin.Context) {
 			h.db.Find(&centers)
 			nearby := make([]models.RegionalCenter, 0)
 			for _, center := range centers {
-				if center.Latitude != nil && center.Longitude != nil {
-					distance := calculateDistance(lat, lng, *center.Latitude, *center.Longitude)
+				if center.Latitude != 0 && center.Longitude != 0 {
+					distance := calculateDistance(lat, lng, center.Latitude, center.Longitude)
 					if distance <= radius {
 						nearby = append(nearby, center)
 					}
@@ -470,14 +451,8 @@ func (h *Handler) SearchNearby(c *gin.Context) {
 		case "resources":
 			var resources []models.Resource
 			h.db.Find(&resources)
-			nearby := make([]models.Resource, 0)
-			for _, resource := range resources {
-				distance := calculateDistance(lat, lng, resource.Latitude, resource.Longitude)
-				if distance <= radius {
-					nearby = append(nearby, resource)
-				}
-			}
-			result["resources"] = nearby
+			// Resources don't have location data, so return all
+			result["resources"] = resources
 		}
 	}
 
@@ -496,17 +471,8 @@ func (h *Handler) GetUserPreferences(c *gin.Context) {
 		if err == gorm.ErrRecordNotFound {
 			// Return default preferences
 			defaultPrefs := models.UserPreferences{
-				UserID:              userID,
-				MapType:             "roadmap",
-				DefaultZoom:         10,
-				ShowFacilities:      true,
-				ShowABACenters:      true,
-				ShowResourceCenters: true,
-				ShowRegionalCenters: true,
-				ShowProviders:       true,
-				PreferredRadius:     25,
-				RequireWaitlist:     false,
-				RequireInsurance:    false,
+				UserID:      userID,
+				Preferences: `{"mapType":"roadmap","defaultZoom":10,"showFacilities":true}`,
 			}
 			c.JSON(http.StatusOK, defaultPrefs)
 			return

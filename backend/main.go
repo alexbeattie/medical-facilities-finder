@@ -64,7 +64,7 @@ func initDB(dsn string) (*gorm.DB, error) {
 
 	// Auto-migrate only user preferences (other tables exist in your database)
 	if err := db.AutoMigrate(
-		&models.UserPreferences{},
+		&models.UserPreference{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
@@ -83,6 +83,8 @@ func setupRouter(handler *handlers.Handler, service *services.Service, db *gorm.
 			"http://localhost:8080",
 			"http://localhost:8081",
 			"http://localhost:8082",
+			"http://localhost:8083", // Vue dev server
+			"http://localhost:8084", // Vue dev server (current)
 			"https://medicalfacilities.com",
 			"http://medicalfacilities.com",
 			"https://www.medicalfacilities.com",

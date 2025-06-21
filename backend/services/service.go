@@ -36,14 +36,6 @@ func (s *Service) GetABACenters(filter *models.SearchFilter) ([]models.ABACenter
 		query = query.Where("service_type = ?", filter.ServiceType)
 	}
 
-	if filter.InsuranceRequired {
-		query = query.Where("insurance_accepted IS NOT NULL AND insurance_accepted != ''")
-	}
-
-	if filter.WaitlistOnly {
-		query = query.Where("waitlist_availability IS NOT NULL AND waitlist_availability != ''")
-	}
-
 	if err := query.Find(&centers).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch ABA centers: %w", err)
 	}
@@ -76,18 +68,18 @@ func (s *Service) CreateABACenter(center *models.ABACenter) error {
 // GetResourceCenters retrieves resource centers with filtering
 func (s *Service) GetResourceCenters(filter *models.SearchFilter) ([]models.ResourceCenter, error) {
 	var centers []models.ResourceCenter
-	query := s.db.Model(&models.ResourceCenter{}).Preload("Diagnoses")
+	query := s.db.Model(&models.ResourceCenter{})
 
 	if err := query.Find(&centers).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch resource centers: %w", err)
 	}
 
 	// Filter by distance if location is provided
-	if filter.Latitude != 0 && filter.Longitude != 0 && filter.MaxDistance > 0 {
+	if filter.Latitude != 0 && filter.Longitude != 0 && filter.Radius > 0 {
 		filteredCenters := make([]models.ResourceCenter, 0)
 		for _, center := range centers {
 			distance := calculateDistance(filter.Latitude, filter.Longitude, center.Latitude, center.Longitude)
-			if distance <= filter.MaxDistance {
+			if distance <= filter.Radius {
 				filteredCenters = append(filteredCenters, center)
 			}
 		}
@@ -100,7 +92,7 @@ func (s *Service) GetResourceCenters(filter *models.SearchFilter) ([]models.Reso
 // GetResourceCenterByID retrieves a single resource center by ID
 func (s *Service) GetResourceCenterByID(id uuid.UUID) (*models.ResourceCenter, error) {
 	var center models.ResourceCenter
-	if err := s.db.Preload("Diagnoses").First(&center, "id = ?", id).Error; err != nil {
+	if err := s.db.First(&center, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("resource center not found")
 		}
@@ -116,27 +108,8 @@ func (s *Service) GetResources(filter *models.SearchFilter) ([]models.Resource, 
 	var resources []models.Resource
 	query := s.db.Model(&models.Resource{})
 
-	// Filter by diagnosis
-	if len(filter.Diagnoses) > 0 {
-		for _, diagnosis := range filter.Diagnoses {
-			query = query.Where("? = ANY(diagnoses)", diagnosis)
-		}
-	}
-
 	if err := query.Find(&resources).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch resources: %w", err)
-	}
-
-	// Filter by distance if location is provided
-	if filter.Latitude != 0 && filter.Longitude != 0 && filter.MaxDistance > 0 {
-		filteredResources := make([]models.Resource, 0)
-		for _, resource := range resources {
-			distance := calculateDistance(filter.Latitude, filter.Longitude, resource.Latitude, resource.Longitude)
-			if distance <= filter.MaxDistance {
-				filteredResources = append(filteredResources, resource)
-			}
-		}
-		resources = filteredResources
 	}
 
 	return resources, nil
@@ -166,12 +139,12 @@ func (s *Service) GetRegionalCenters(filter *models.SearchFilter) ([]models.Regi
 	}
 
 	// Filter by distance if location is provided
-	if filter.Latitude != 0 && filter.Longitude != 0 && filter.MaxDistance > 0 {
+	if filter.Latitude != 0 && filter.Longitude != 0 && filter.Radius > 0 {
 		filteredCenters := make([]models.RegionalCenter, 0)
 		for _, center := range centers {
-			if center.Latitude != nil && center.Longitude != nil {
-				distance := calculateDistance(filter.Latitude, filter.Longitude, *center.Latitude, *center.Longitude)
-				if distance <= filter.MaxDistance {
+			if center.Latitude != 0 && center.Longitude != 0 {
+				distance := calculateDistance(filter.Latitude, filter.Longitude, center.Latitude, center.Longitude)
+				if distance <= filter.Radius {
 					filteredCenters = append(filteredCenters, center)
 				}
 			}
@@ -229,7 +202,7 @@ func (s *Service) SearchNearby(lat, lng, radiusMiles float64, entityTypes []stri
 		switch entityType {
 		case "resource_centers":
 			var centers []models.ResourceCenter
-			s.db.Model(&models.ResourceCenter{}).Preload("Diagnoses").Find(&centers)
+			s.db.Model(&models.ResourceCenter{}).Find(&centers)
 			nearby := make([]models.ResourceCenter, 0)
 			for _, center := range centers {
 				distance := calculateDistance(lat, lng, center.Latitude, center.Longitude)
@@ -244,8 +217,8 @@ func (s *Service) SearchNearby(lat, lng, radiusMiles float64, entityTypes []stri
 			s.db.Find(&centers)
 			nearby := make([]models.RegionalCenter, 0)
 			for _, center := range centers {
-				if center.Latitude != nil && center.Longitude != nil {
-					distance := calculateDistance(lat, lng, *center.Latitude, *center.Longitude)
+				if center.Latitude != 0 && center.Longitude != 0 {
+					distance := calculateDistance(lat, lng, center.Latitude, center.Longitude)
 					if distance <= radiusMiles {
 						nearby = append(nearby, center)
 					}
@@ -256,14 +229,8 @@ func (s *Service) SearchNearby(lat, lng, radiusMiles float64, entityTypes []stri
 		case "resources":
 			var resources []models.Resource
 			s.db.Find(&resources)
-			nearby := make([]models.Resource, 0)
-			for _, resource := range resources {
-				distance := calculateDistance(lat, lng, resource.Latitude, resource.Longitude)
-				if distance <= radiusMiles {
-					nearby = append(nearby, resource)
-				}
-			}
-			result["resources"] = nearby
+			// Resources don't have location data, so return all
+			result["resources"] = resources
 		}
 	}
 
@@ -279,17 +246,8 @@ func (s *Service) GetUserPreferences(userID string) (*models.UserPreferences, er
 		if err == gorm.ErrRecordNotFound {
 			// Return default preferences
 			return &models.UserPreferences{
-				UserID:              userID,
-				MapType:             "roadmap",
-				DefaultZoom:         10,
-				ShowFacilities:      true,
-				ShowABACenters:      true,
-				ShowResourceCenters: true,
-				ShowRegionalCenters: true,
-				ShowProviders:       true,
-				PreferredRadius:     25,
-				RequireWaitlist:     false,
-				RequireInsurance:    false,
+				UserID:      userID,
+				Preferences: `{"mapType":"roadmap","defaultZoom":10,"showFacilities":true}`,
 			}, nil
 		}
 		return nil, fmt.Errorf("failed to fetch preferences: %w", err)
