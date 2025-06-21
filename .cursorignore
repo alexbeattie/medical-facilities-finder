@@ -1,0 +1,24 @@
+# .cursorignore - Controls which files are hidden from Cursor
+# Remove .env* from ignore list to allow viewing environment files
+
+# Keep these hidden for security
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx
+**/id_rsa
+**/id_dsa
+**/id_ecdsa
+**/id_ed25519
+
+# Keep large files/folders hidden
+**/node_modules/
+**/.git/
+**/dist/
+**/build/
+**/*.log
+
+# Allow .env files (comment out to hide them again)
+# .env*
+# backend/.env*
+# frontend/.env* 

@@ -1,0 +1,59 @@
+{
+  "folders": [
+    {
+      "name": "Root",
+      "path": "."
+    },
+    {
+      "name": "Frontend",
+      "path": "./frontend"
+    },
+    {
+      "name": "Backend",
+      "path": "./backend"
+    }
+  ],
+  "settings": {
+    "vetur.enable": false,
+    "vetur.validation.template": false,
+    "vetur.validation.script": false,
+    "vetur.validation.style": false,
+    "vue.enable": true,
+    "vue.server.hybridMode": true,
+    "eslint.workingDirectories": [
+      {
+        "directory": "./frontend",
+        "changeProcessCWD": true
+      }
+    ],
+    "typescript.preferences.importModuleSpecifier": "relative",
+    "javascript.preferences.importModuleSpecifier": "relative",
+    "files.associations": {
+      "*.vue": "vue"
+    },
+    "emmet.includeLanguages": {
+      "vue-html": "html",
+      "vue": "html"
+    },
+    "go.gopath": "",
+    "go.goroot": "",
+    "go.toolsGopath": "",
+    "files.exclude": {
+      "**/.git": true,
+      "**/.DS_Store": true,
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "Vue.volar",
+      "Vue.vscode-typescript-vue-plugin",
+      "golang.go",
+      "bradlc.vscode-tailwindcss",
+      "esbenp.prettier-vscode"
+    ],
+    "unwantedRecommendations": ["octref.vetur"]
+  }
+}
