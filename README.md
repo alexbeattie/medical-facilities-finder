@@ -232,6 +232,3 @@ Edit the Google Maps configuration in `frontend/src/App.vue`:
 
 MIT License - see LICENSE file for details.
 
-## 🔗 Related Projects
-
-This project is based on the OneStepGPS device tracking application architecture, adapted for medical facility management. 
