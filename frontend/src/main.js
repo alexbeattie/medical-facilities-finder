@@ -1,6 +1,8 @@
 import { createApp } from 'vue';
 import App from './App.vue';
+import router from './router';
 import store from './store';
+import { auth0 } from './auth/auth0';
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 import './assets/main.css';
@@ -22,7 +24,21 @@ Promise.all([
   console.error('❌ Store initialization failed:', error);
 });
 
+// Add router
+app.use(router);
+console.log('🧭 Router initialized');
+
+// Add store
 app.use(store);
+console.log('📦 Store added to app');
+
+// Add Auth0
+app.use(auth0);
+console.log('🔐 Auth0 initialized');
+
+// Make auth0 available to route guards
+window.Vue = { config: { globalProperties: { $auth0: auth0 } } };
+
 console.log('🎯 Mounting Vue app to #app...');
 app.mount('#app');
 console.log('✅ Vue app mounted successfully!');

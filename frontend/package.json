@@ -16,14 +16,17 @@
     "deploy": "vue-cli-service s3-deploy"
   },
   "dependencies": {
+    "@auth0/auth0-vue": "^2.4.0",
     "@googlemaps/markerclusterer": "^2.5.3",
     "@hapi/joi": "^17.1.1",
+    "@heroicons/vue": "^2.2.0",
     "core-js": "3",
     "lodash": "^4.17.21",
     "mapbox-gl": "^3.13.0",
     "regenerator-runtime": "^0.14.1",
     "vue": "^3.2.13",
     "vue-cli-plugin-s3-deploy": "^4.0.0-rc4",
+    "vue-router": "^4.5.1",
     "vue3-google-map": "^0.21.1",
     "vuex": "4"
   },

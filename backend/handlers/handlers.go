@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"net/http"
@@ -379,6 +380,178 @@ func (h *Handler) CreateFormSubmission(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, submission)
+}
+
+// SubmitABACenter handles new ABA center submissions from users
+func (h *Handler) SubmitABACenter(c *gin.Context) {
+	log.Printf("[SUBMIT_ABA_CENTER] Request received")
+
+	var submission struct {
+		// ABA Center data
+		Name                 string `json:"name" binding:"required"`
+		ServiceType          string `json:"service_type" binding:"required"`
+		WaitlistAvailability string `json:"waitlist_availability"`
+		Phone                string `json:"phone" binding:"required"`
+		Email                string `json:"email"`
+		Website              string `json:"website"`
+		Address              string `json:"address" binding:"required"`
+		City                 string `json:"city" binding:"required"`
+		State                string `json:"state" binding:"required"`
+		ZipCode              string `json:"zip_code" binding:"required"`
+		InsuranceAccepted    string `json:"insurance_accepted"`
+		Description          string `json:"description"`
+
+		// Submitter data
+		SubmitterName  string `json:"submitter_name" binding:"required"`
+		SubmitterEmail string `json:"submitter_email" binding:"required"`
+		Relationship   string `json:"relationship" binding:"required"`
+		SubmittedAt    string `json:"submitted_at"`
+		Status         string `json:"status"`
+		SubmissionType string `json:"submission_type"`
+	}
+
+	if err := c.ShouldBindJSON(&submission); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON data"})
+		return
+	}
+
+	// Create a form submission record for tracking
+	formSubmission := models.FormSubmission{
+		Name:         submission.SubmitterName,
+		Email:        submission.SubmitterEmail,
+		Phone:        submission.Phone,
+		Message:      fmt.Sprintf("ABA Center Submission: %s\n\nDetails:\n%s", submission.Name, submission.Description),
+		FacilityID:   "", // Will be set after center is created
+		FacilityType: "aba_center_submission",
+		Status:       "pending_review",
+	}
+
+	// Save submission to form_submissions table
+	if err := h.db.Create(&formSubmission).Error; err != nil {
+		log.Printf("[SUBMIT_ABA_CENTER] Database error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create ABA center submission"})
+		return
+	}
+
+	// Create pending ABA center record
+	// Map to the database schema which uses 'street' instead of 'address'
+	abaCenter := models.ABACenter{
+		Name:                 submission.Name,
+		Street:               submission.Address, // Map address to street field
+		City:                 submission.City,
+		Zip:                  submission.ZipCode, // Map zip_code to zip field
+		Phone:                submission.Phone,
+		ServiceType:          submission.ServiceType,
+		InsuranceAccepted:    submission.InsuranceAccepted,
+		WaitlistAvailability: submission.WaitlistAvailability,
+	}
+
+	if err := h.db.Create(&abaCenter).Error; err != nil {
+		log.Printf("[SUBMIT_ABA_CENTER] Database error creating ABA center: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create ABA center record"})
+		return
+	}
+
+	// Update form submission with facility ID
+	formSubmission.FacilityID = abaCenter.ID.String()
+	h.db.Save(&formSubmission)
+
+	log.Printf("[SUBMIT_ABA_CENTER] Successfully created submission for center: %s", submission.Name)
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "ABA center submission received successfully",
+		"id":      abaCenter.ID,
+		"status":  "pending_review",
+	})
+}
+
+// SubmitRegionalCenterUpdate handles updates/additional info for regional centers
+func (h *Handler) SubmitRegionalCenterUpdate(c *gin.Context) {
+	log.Printf("[SUBMIT_REGIONAL_CENTER_UPDATE] Request received")
+
+	var submission struct {
+		// Regional center identification
+		RegionalCenterID   string `json:"regional_center_id"`
+		RegionalCenterName string `json:"regional_center_name"`
+
+		// Update data
+		UpdateType        string `json:"update_type" binding:"required"` // "contact_info", "services", "hours", "other"
+		UpdateDescription string `json:"update_description" binding:"required"`
+
+		// Contact info updates
+		NewPhone   string `json:"new_phone"`
+		NewEmail   string `json:"new_email"`
+		NewWebsite string `json:"new_website"`
+		NewAddress string `json:"new_address"`
+
+		// Service updates
+		ServicesOffered     string `json:"services_offered"`
+		EligibilityCriteria string `json:"eligibility_criteria"`
+		OperatingHours      string `json:"operating_hours"`
+		SpecialPrograms     string `json:"special_programs"`
+
+		// Submitter data
+		SubmitterName  string `json:"submitter_name" binding:"required"`
+		SubmitterEmail string `json:"submitter_email" binding:"required"`
+		Relationship   string `json:"relationship" binding:"required"`
+		SubmittedAt    string `json:"submitted_at"`
+		Status         string `json:"status"`
+		SubmissionType string `json:"submission_type"`
+	}
+
+	if err := c.ShouldBindJSON(&submission); err != nil {
+		log.Printf("[SUBMIT_REGIONAL_CENTER_UPDATE] Validation error: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Validation failed: %v", err)})
+		return
+	}
+
+	log.Printf("[SUBMIT_REGIONAL_CENTER_UPDATE] Parsed submission: center=%s, type=%s, desc=%s, submitter=%s",
+		submission.RegionalCenterName, submission.UpdateType, submission.UpdateDescription, submission.SubmitterName)
+
+	// Create comprehensive message for form submission
+	message := fmt.Sprintf("Regional Center Update: %s\n\nUpdate Type: %s\n\nDescription: %s",
+		submission.RegionalCenterName,
+		submission.UpdateType,
+		submission.UpdateDescription)
+
+	if submission.NewPhone != "" {
+		message += fmt.Sprintf("\nNew Phone: %s", submission.NewPhone)
+	}
+	if submission.NewEmail != "" {
+		message += fmt.Sprintf("\nNew Email: %s", submission.NewEmail)
+	}
+	if submission.NewWebsite != "" {
+		message += fmt.Sprintf("\nNew Website: %s", submission.NewWebsite)
+	}
+	if submission.ServicesOffered != "" {
+		message += fmt.Sprintf("\nServices Offered: %s", submission.ServicesOffered)
+	}
+	if submission.OperatingHours != "" {
+		message += fmt.Sprintf("\nOperating Hours: %s", submission.OperatingHours)
+	}
+
+	// Create form submission record
+	formSubmission := models.FormSubmission{
+		Name:         submission.SubmitterName,
+		Email:        submission.SubmitterEmail,
+		Phone:        submission.NewPhone,
+		Message:      message,
+		FacilityID:   submission.RegionalCenterID,
+		FacilityType: "regional_center_update",
+		Status:       "pending_review",
+	}
+
+	if err := h.db.Create(&formSubmission).Error; err != nil {
+		log.Printf("[SUBMIT_REGIONAL_CENTER_UPDATE] Database error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create regional center update submission"})
+		return
+	}
+
+	log.Printf("[SUBMIT_REGIONAL_CENTER_UPDATE] Successfully created update submission for: %s", submission.RegionalCenterName)
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Regional center update submission received successfully",
+		"id":      formSubmission.ID,
+		"status":  "pending_review",
+	})
 }
 
 // SearchNearby finds all types of facilities within a specified radius

@@ -120,20 +120,18 @@ type ProviderSpecialization struct {
 // ABACenter represents an ABA therapy center
 type ABACenter struct {
 	ID                   uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Name                 string    `json:"name" gorm:"type:varchar(255);not null"`
-	Address              string    `json:"address" gorm:"type:text"`
-	City                 string    `json:"city" gorm:"type:varchar(100)"`
-	State                string    `json:"state" gorm:"type:varchar(2)"`
-	ZipCode              string    `json:"zip_code" gorm:"type:varchar(10)"`
-	Phone                string    `json:"phone" gorm:"type:varchar(20)"`
-	Email                string    `json:"email" gorm:"type:varchar(255)"`
-	Website              string    `json:"website" gorm:"type:varchar(255)"`
-	Latitude             float64   `json:"latitude" gorm:"type:decimal(10,8)"`
-	Longitude            float64   `json:"longitude" gorm:"type:decimal(11,8)"`
-	ServiceType          string    `json:"service_type" gorm:"type:varchar(100)"`
+	Name                 string    `json:"name" gorm:"type:text;not null"`
+	Street               string    `json:"street" gorm:"type:text;not null"`
+	City                 string    `json:"city" gorm:"type:text;not null"`
+	Zip                  string    `json:"zip" gorm:"type:text;not null"`
+	Phone                string    `json:"phone" gorm:"type:text;not null"`
+	ServiceType          string    `json:"service_type" gorm:"type:text;not null"`
+	WaitlistAvailability string    `json:"waitlist_availability" gorm:"type:text"`
+	WaitlistNotes        string    `json:"waitlist_notes" gorm:"type:text"`
+	DxVerification       string    `json:"dx_verification" gorm:"type:text"`
 	InsuranceAccepted    string    `json:"insurance_accepted" gorm:"type:text"`
-	WaitlistAvailability string    `json:"waitlist_availability" gorm:"type:varchar(50)"`
-	Description          string    `json:"description" gorm:"type:text"`
+	MediCalPlans         string    `json:"medi_cal_plans" gorm:"type:text"`
+	Notes                string    `json:"notes" gorm:"type:text"`
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
 }
@@ -158,9 +156,9 @@ type ResourceCenter struct {
 
 // Diagnosis represents a diagnosis that resource centers support
 type Diagnosis struct {
-	ID          uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Name        string    `json:"name" gorm:"type:varchar(255);not null;uniqueIndex"`
-	Code        string    `json:"code" gorm:"type:varchar(20);uniqueIndex"`
+	ID          uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:uuid_generate_v4()"`
+	Name        string    `json:"name" gorm:"type:varchar(255);not null"`
+	Code        string    `json:"code" gorm:"type:varchar(20)"`
 	Description string    `json:"description" gorm:"type:text"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -168,19 +166,21 @@ type Diagnosis struct {
 
 // Resource represents a resource or document
 type Resource struct {
-	ID           uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Title        string    `json:"title" gorm:"type:varchar(255);not null"`
-	Description  string    `json:"description" gorm:"type:text"`
-	URL          string    `json:"url" gorm:"type:varchar(500)"`
-	ResourceType string    `json:"resource_type" gorm:"type:varchar(100)"`
-	Tags         []string  `json:"tags" gorm:"type:text[]"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID          uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Name        string    `json:"name" gorm:"type:text;not null"`
+	Description string    `json:"description" gorm:"type:text"`
+	Latitude    float64   `json:"latitude" gorm:"type:numeric;not null"`
+	Longitude   float64   `json:"longitude" gorm:"type:numeric;not null"`
+	Diagnoses   []string  `json:"diagnoses" gorm:"type:text[]"`
+	Address     string    `json:"address" gorm:"type:text"`
+	ContactInfo string    `json:"contact_info" gorm:"type:jsonb"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // FormSubmission represents a contact form submission
 type FormSubmission struct {
-	ID           uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ID           int       `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name         string    `json:"name" gorm:"type:varchar(255);not null"`
 	Email        string    `json:"email" gorm:"type:varchar(255);not null"`
 	Phone        string    `json:"phone" gorm:"type:varchar(20)"`

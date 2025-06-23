@@ -62,10 +62,9 @@ func initDB(dsn string) (*gorm.DB, error) {
 	}
 	log.Printf("Successfully connected to database")
 
-	// Auto-migrate only user preferences (other tables exist in your database)
-	if err := db.AutoMigrate(
-		&models.UserPreference{},
-	); err != nil {
+	// Skip auto-migration since tables already exist
+	// Only migrate UserPreference which is safe
+	if err := db.AutoMigrate(&models.UserPreference{}); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 	log.Printf("Database migrations completed successfully")
@@ -125,7 +124,8 @@ func setupRouter(handler *handlers.Handler, service *services.Service, db *gorm.
 		// ABA Centers
 		api.GET("/aba-centers", handler.GetABACenters)
 		api.GET("/aba-centers/:id", handler.GetABACenter)
-		api.POST("/aba-centers", handler.CreateABACenter) // Admin function
+		api.POST("/aba-centers", handler.CreateABACenter)        // Admin function
+		api.POST("/aba-centers/submit", handler.SubmitABACenter) // User submission
 
 		// Resource Centers
 		api.GET("/resource-centers", handler.GetResourceCenters)
@@ -137,6 +137,7 @@ func setupRouter(handler *handlers.Handler, service *services.Service, db *gorm.
 
 		// Regional Centers
 		api.GET("/regional-centers", handler.GetRegionalCenters)
+		api.POST("/regional-centers/submit-update", handler.SubmitRegionalCenterUpdate) // User update submission
 
 		// Providers
 		api.GET("/providers", handler.GetProviders)
@@ -206,7 +207,7 @@ func main() {
 	loadEnvFile()
 
 	// Check for required environment variables
-	requiredEnvVars := []string{"GOOGLE_MAPS_API_KEY", "DSN"}
+	requiredEnvVars := []string{"DSN"}
 	for _, envVar := range requiredEnvVars {
 		if os.Getenv(envVar) == "" {
 			log.Fatalf("Required environment variable %s is not set", envVar)
@@ -219,7 +220,7 @@ func main() {
 	}
 
 	cfg := &config.Config{
-		GoogleMapsAPIKey: os.Getenv("GOOGLE_MAPS_API_KEY"),
+		GoogleMapsAPIKey: "", // Not used - app uses Mapbox
 		DSN:              os.Getenv("DSN"),
 	}
 

@@ -1,7 +1,7 @@
 // composables/useMap.js
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 
-export function useMap(apiKey) {
+export function useMap() {
   const map = ref(null);
   const markerRefs = ref(new Map());
 

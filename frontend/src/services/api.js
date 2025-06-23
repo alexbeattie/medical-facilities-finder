@@ -305,6 +305,44 @@ class ApiService {
     }
   }
 
+  // Submit a new ABA center for review
+  async submitABACenter(centerData) {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/v1/aba-centers/submit`, {
+        method: 'POST',
+        headers: this.headers,
+        body: JSON.stringify({
+          ...centerData,
+          status: 'pending_review',
+          submission_type: 'new_aba_center'
+        })
+      });
+      return this.handleResponse(response);
+    } catch (error) {
+      console.error('Error submitting ABA center:', error);
+      throw error;
+    }
+  }
+
+  // Submit regional center update/additional information
+  async submitRegionalCenterUpdate(updateData) {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/v1/regional-centers/submit-update`, {
+        method: 'POST',
+        headers: this.headers,
+        body: JSON.stringify({
+          ...updateData,
+          status: 'pending_review',
+          submission_type: 'regional_center_update'
+        })
+      });
+      return this.handleResponse(response);
+    } catch (error) {
+      console.error('Error submitting regional center update:', error);
+      throw error;
+    }
+  }
+
   // ===== USER PREFERENCES =====
 
   // Get user preferences
@@ -354,3 +392,24 @@ class ApiService {
 }
 
 export const apiService = new ApiService();
+
+// Named exports for specific functions
+export const {
+  getABACenters,
+  getABACenter,
+  createABACenter,
+  getResourceCenters,
+  getResourceCenter,
+  getResources,
+  getResource,
+  getRegionalCenters,
+  getProviders,
+  getDiagnoses,
+  searchNearby,
+  submitForm,
+  submitABACenter,
+  submitRegionalCenterUpdate,
+  getUserPreferences,
+  updateUserPreferences,
+  healthCheck
+} = apiService;
